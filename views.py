@@ -634,28 +634,34 @@ def render_calendar(df_prod, df_trans):
     .cal-day.other-month { background: #F9FAFB; }
     .cal-day.today-cell { background: #EFF6FF !important; box-shadow: inset 0 0 0 2px #3B82F6; }
     .today-badge { background-color: #3B82F6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.65rem; margin-left: 5px; vertical-align: text-bottom; font-weight: normal; }
-    .cal-ribbon { position: relative; cursor: pointer; transition: filter 0.2s; height: 24px; display: flex; align-items: center; box-sizing: border-box; z-index: 2; margin-top: 3px; }
-    .cal-ribbon:hover { filter: brightness(0.95); z-index: 20; } 
-    .cal-tooltip { visibility: hidden; width: max-content; min-width: 180px; max-width: 250px; background-color: #1F2937 !important; text-align: left; border-radius: 8px; padding: 10px; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 5px; opacity: 0; transition: opacity 0.2s; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); font-weight: normal; white-space: normal; line-height: 1.4; z-index: 100; pointer-events: none; }
-    .cal-tooltip::after { content: ""; position: absolute; bottom: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: transparent transparent #1F2937 transparent; }
+    
+    /* เปลี่ยนจาก filter เป็น opacity ป้องกันบัค position fixed ในมือถือ */
+    .cal-ribbon { position: relative; cursor: pointer; transition: opacity 0.2s; height: 24px; display: flex; align-items: center; box-sizing: border-box; z-index: 2; margin-top: 3px; }
+    .cal-ribbon:hover { opacity: 0.85; z-index: 20; } 
+    
+    /* ตั้งค่ากล่องข้อความพื้นฐาน */
+    .cal-tooltip { visibility: hidden; width: max-content; min-width: 180px; max-width: 250px; background-color: #1F2937 !important; text-align: left; border-radius: 8px; padding: 10px; position: absolute; top: 100%; margin-top: 5px; opacity: 0; transition: opacity 0.2s; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); font-weight: normal; white-space: normal; line-height: 1.4; z-index: 100; pointer-events: none; border: 1px solid #4B5563; }
     .cal-ribbon:hover .cal-tooltip { visibility: visible; opacity: 1; }
     
-    /* 📱 [เพิ่มใหม่] เวทมนตร์บังคับไม่ให้ล้นจอในมือถือ/iPad */
+    /* 🌟 [ท่าไม้ตายใหม่] จัดตำแหน่งกล่องตามวันในสัปดาห์ (ป้องกันล้นขอบ 100%) */
+    /* คอลัมน์ 1-3 (อาทิตย์ จันทร์ อังคาร) บังคับให้กล่องชิดซ้าย */
+    .cal-day:nth-child(7n+1) .cal-tooltip,
+    .cal-day:nth-child(7n+2) .cal-tooltip,
+    .cal-day:nth-child(7n+3) .cal-tooltip { left: 0 !important; transform: none !important; }
+    
+    /* คอลัมน์ 4 (พุธ) ให้อยู่ตรงกลาง */
+    .cal-day:nth-child(7n+4) .cal-tooltip { left: 50% !important; transform: translateX(-50%) !important; }
+    
+    /* คอลัมน์ 5-7 (พฤหัส ศุกร์ เสาร์) บังคับให้กล่องชิดขวา */
+    .cal-day:nth-child(7n+5) .cal-tooltip,
+    .cal-day:nth-child(7n+6) .cal-tooltip,
+    .cal-day:nth-child(7n+7) .cal-tooltip { right: 0 !important; left: auto !important; transform: none !important; }
+
+    /* ปรับขนาดให้พอดีจอในมือถือ */
     @media (max-width: 820px) {
         .cal-tooltip {
-            position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 90vw !important; /* กว้าง 90% ของจอมือถือ */
-            max-width: 320px !important;
-            z-index: 999999 !important;
-            margin-top: 0 !important;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-            border: 1px solid #4B5563 !important;
-        }
-        .cal-tooltip::after {
-            display: none !important; /* ซ่อนลูกศรชี้ */
+            width: 85vw !important; /* กว้าง 85% ของจอ */
+            max-width: 280px !important;
         }
     }
     </style>
