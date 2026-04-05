@@ -639,6 +639,25 @@ def render_calendar(df_prod, df_trans):
     .cal-tooltip { visibility: hidden; width: max-content; min-width: 180px; max-width: 250px; background-color: #1F2937 !important; text-align: left; border-radius: 8px; padding: 10px; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 5px; opacity: 0; transition: opacity 0.2s; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); font-weight: normal; white-space: normal; line-height: 1.4; z-index: 100; pointer-events: none; }
     .cal-tooltip::after { content: ""; position: absolute; bottom: 100%; left: 50%; margin-left: -5px; border-width: 5px; border-style: solid; border-color: transparent transparent #1F2937 transparent; }
     .cal-ribbon:hover .cal-tooltip { visibility: visible; opacity: 1; }
+    
+    /* 📱 [เพิ่มใหม่] เวทมนตร์บังคับไม่ให้ล้นจอในมือถือ/iPad */
+    @media (max-width: 820px) {
+        .cal-tooltip {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            width: 90vw !important; /* กว้าง 90% ของจอมือถือ */
+            max-width: 320px !important;
+            z-index: 999999 !important;
+            margin-top: 0 !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+            border: 1px solid #4B5563 !important;
+        }
+        .cal-tooltip::after {
+            display: none !important; /* ซ่อนลูกศรชี้ */
+        }
+    }
     </style>
     """, unsafe_allow_html=True)
     st.markdown("<h2 style='margin-bottom:0;'>ตารางกำหนดการ (Booking Calendar)</h2>", unsafe_allow_html=True)
