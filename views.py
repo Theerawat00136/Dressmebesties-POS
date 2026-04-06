@@ -306,15 +306,23 @@ def render_pos(conn, df_prod, df_cus, df_trans):
                         except:
                             due_dt = pd.to_datetime(target_trans['end_date'], dayfirst=True)
                         
-                        allowed_due = due_dt + timedelta(days=1) 
+                        # 🌟 [อัปเดตใหม่] ลบการบวกเพิ่มเวลาผ่อนผัน 1 วันออก บังคับเป๊ะตามเวลา!
+                        allowed_due = due_dt 
                         if datetime.now() > allowed_due:
-                            late_days = (datetime.now() - allowed_due).days + 1
+                            # คำนวณวันเกินกำหนดแบบเป๊ะๆ (เศษชั่วโมงปัดเป็น 1 วัน)
+                            late_days = (datetime.now() - due_dt).days + 1
                             fine = late_days * p_inf.get('fine_per_day', 0)
-                            st.error(f"การแจ้งเตือนรหัส {pid}: ส่งคืนเกินกำหนด (กำหนดส่งคืน: {allowed_due.strftime('%d/%m/%Y %H:%M')}) (ค่าปรับ: {fine:,.2f} ฿)")
+                            st.error(f"การแจ้งเตือนรหัส {pid}: ส่งคืนเกินกำหนด (กำหนดส่งคืน: {due_dt.strftime('%d/%m/%Y %H:%M')})")
                             total_late_fine += fine
                         else:
                             st.success(f"รหัส {pid}: ส่งคืนภายในระยะเวลาที่กำหนด")
                             
+                    st.write("---")
+                    # 🌟 โซนจัดการค่าปรับที่สามารถพิมพ์แก้ไขได้
+                    st.markdown("<h5 style='color:#374151;'>📝 จัดการค่าปรับล่าช้า</h5>", unsafe_allow_html=True)
+                    st.info("💡 ระบบคิดค่าปรับเป๊ะตามเวลา หากลูกค้าคืนตรงเวลาแต่ร้านกดรับเข้าระบบช้า สามารถแก้ค่าปรับเป็น 0 บาทได้เลยครับ")
+                    final_late_fine = st.number_input("ค่าปรับส่งคืนล่าช้า (บาท) - สามารถแก้ไขตัวเลขได้", min_value=0, value=int(total_late_fine))
+                    
                     st.write("---")
                     ret_condition = st.radio("สถานะสินค้าที่รับคืน:", ["ปกติ (ส่งทำความสะอาด)", "ชำรุด (ต้องการซ่อมแซม)", "สูญหาย (ตัดออกจากระบบ)"], horizontal=True)
                     damage_fine = 0
@@ -334,9 +342,10 @@ def render_pos(conn, df_prod, df_cus, df_trans):
                         db.update_product_status(conn, sel_pids, new_stat)
                         db.update_transaction_status(conn, sel_pids, "คืนสินค้าแล้ว", current_status_list=['เช่าอยู่'])
                         
-                        total_fine = total_late_fine + damage_fine
+                        # 🌟 บันทึกยอดที่แก้ไขแล้วลงระบบ
+                        total_fine = final_late_fine + damage_fine
                         if total_fine > 0:
-                            note_str = f"ค่าปรับล่าช้า {total_late_fine}฿ " if total_late_fine > 0 else ""
+                            note_str = f"ค่าปรับล่าช้า {final_late_fine}฿ " if final_late_fine > 0 else ""
                             note_str += f"ค่าปรับชำรุด/สูญหาย {damage_fine}฿ ({damage_note})" if damage_fine > 0 else ""
                             cus_name = target_trans['cus_name']
                             db.save_rental_transaction(conn, ['-'], cus_name, '', '', '', '', total_fine, note_str.strip(), 'ค่าปรับ')
