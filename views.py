@@ -24,8 +24,13 @@ def calc_rent_price(days, p1, p3, p5, p7, p15):
         d = 1
         
     def sf(val):
-        try: return float(val)
-        except: return 0.0
+        if pd.isna(val): return 0.0
+        try: 
+            v = float(val)
+            if str(v).lower() == 'nan': return 0.0
+            return v
+        except: 
+            return 0.0
             
     p1, p3, p5, p7, p15 = sf(p1), sf(p3), sf(p5), sf(p7), sf(p15)
     
@@ -306,10 +311,8 @@ def render_pos(conn, df_prod, df_cus, df_trans):
                         except:
                             due_dt = pd.to_datetime(target_trans['end_date'], dayfirst=True)
                         
-                        # 🌟 [อัปเดตใหม่] ลบการบวกเพิ่มเวลาผ่อนผัน 1 วันออก บังคับเป๊ะตามเวลา!
                         allowed_due = due_dt 
                         if datetime.now() > allowed_due:
-                            # คำนวณวันเกินกำหนดแบบเป๊ะๆ (เศษชั่วโมงปัดเป็น 1 วัน)
                             late_days = (datetime.now() - due_dt).days + 1
                             fine = late_days * p_inf.get('fine_per_day', 0)
                             st.error(f"การแจ้งเตือนรหัส {pid}: ส่งคืนเกินกำหนด (กำหนดส่งคืน: {due_dt.strftime('%d/%m/%Y %H:%M')})")
@@ -318,7 +321,6 @@ def render_pos(conn, df_prod, df_cus, df_trans):
                             st.success(f"รหัส {pid}: ส่งคืนภายในระยะเวลาที่กำหนด")
                             
                     st.write("---")
-                    # 🌟 โซนจัดการค่าปรับที่สามารถพิมพ์แก้ไขได้
                     st.markdown("<h5 style='color:#374151;'>📝 จัดการค่าปรับล่าช้า</h5>", unsafe_allow_html=True)
                     st.info("💡 ระบบคิดค่าปรับเป๊ะตามเวลา หากลูกค้าคืนตรงเวลาแต่ร้านกดรับเข้าระบบช้า สามารถแก้ค่าปรับเป็น 0 บาทได้เลยครับ")
                     final_late_fine = st.number_input("ค่าปรับส่งคืนล่าช้า (บาท) - สามารถแก้ไขตัวเลขได้", min_value=0, value=int(total_late_fine))
@@ -342,7 +344,6 @@ def render_pos(conn, df_prod, df_cus, df_trans):
                         db.update_product_status(conn, sel_pids, new_stat)
                         db.update_transaction_status(conn, sel_pids, "คืนสินค้าแล้ว", current_status_list=['เช่าอยู่'])
                         
-                        # 🌟 บันทึกยอดที่แก้ไขแล้วลงระบบ
                         total_fine = final_late_fine + damage_fine
                         if total_fine > 0:
                             note_str = f"ค่าปรับล่าช้า {final_late_fine}฿ " if final_late_fine > 0 else ""
@@ -366,7 +367,6 @@ def render_pos(conn, df_prod, df_cus, df_trans):
         st.dataframe(display_df[[c for c in show_cols if c in display_df.columns]], use_container_width=True, hide_index=True)
         
         with st.expander("เพิ่ม / แก้ไข ข้อมูลสินค้า", expanded=True):
-            # 🌟 เปลี่ยนจาก st.tabs เป็น st.radio เพื่อให้จำหน้าได้
             prod_mode = st.radio("โหมดจัดการสินค้า:", ["✨ เพิ่มรายการใหม่", "✏️ แก้ไข/ลบ ข้อมูลเดิม"], horizontal=True, key="prod_manage_mode", label_visibility="collapsed")
             st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
             
@@ -415,7 +415,6 @@ def render_pos(conn, df_prod, df_cus, df_trans):
                 if st.button("บันทึกข้อมูลสินค้าใหม่", type="primary", key="save_new_btn", use_container_width=True):
                     if nid and nname: 
                         if db.add_product(conn, df_prod, nid, nname, ncat, n_p1, n_p3, n_p5, n_p7, n_p15, nfine, nsize, ncolor):
-                            # 🌟 ล้างค่าหลังบันทึกสำเร็จ
                             keys_to_clear = ['a_cat', f'a_id_dyn_{prefix}', 'a_name', 'a_size', 'a_color_sel', 'a_color_custom', 'a_p1', 'a_p3', 'a_p5', 'a_p7', 'a_p15', 'a_fine']
                             for k in keys_to_clear:
                                 if k in st.session_state: del st.session_state[k]
@@ -630,8 +629,13 @@ def render_orders(conn, df_prod, df_trans):
                                         x.get('price_7d', 0), 
                                         x.get('price_15d', 0)
                                     ), axis=1)
+                                    
+                                    # 🌟 [แก้บัคที่นี่] ล้างพลังมืด NaN ก่อนส่งให้ใบเสร็จ
+                                    eb_raw = order['edited_base_total']
+                                    eb_val = None if pd.isna(eb_raw) else float(eb_raw)
+                                    tp_val = 0.0 if pd.isna(order['total_price']) else float(order['total_price'])
                                         
-                                    html_content, img_bytes = utils.create_receipt_assets(order['display_date'], order['cus_name'], str(order['cus_phone']).strip(), '-', order['start_date'], order['end_date'], float(order['total_price']), order['note'], order['status'], sel_items, order['edited_base_total'])
+                                    html_content, img_bytes = utils.create_receipt_assets(order['display_date'], order['cus_name'], str(order['cus_phone']).strip(), '-', order['start_date'], order['end_date'], tp_val, order['note'], order['status'], sel_items, eb_val)
                                     st.session_state['show_receipt_data'] = {'html': html_content, 'img': img_bytes, 'filename': f"Receipt_{order['date'].replace(':', '')}.png"}
                                     st.rerun()
 
@@ -644,32 +648,25 @@ def render_calendar(df_prod, df_trans):
     .cal-day.today-cell { background: #EFF6FF !important; box-shadow: inset 0 0 0 2px #3B82F6; }
     .today-badge { background-color: #3B82F6; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.65rem; margin-left: 5px; vertical-align: text-bottom; font-weight: normal; }
     
-    /* เปลี่ยนจาก filter เป็น opacity ป้องกันบัค position fixed ในมือถือ */
     .cal-ribbon { position: relative; cursor: pointer; transition: opacity 0.2s; height: 24px; display: flex; align-items: center; box-sizing: border-box; z-index: 2; margin-top: 3px; }
     .cal-ribbon:hover { opacity: 0.85; z-index: 20; } 
     
-    /* ตั้งค่ากล่องข้อความพื้นฐาน */
     .cal-tooltip { visibility: hidden; width: max-content; min-width: 180px; max-width: 250px; background-color: #1F2937 !important; text-align: left; border-radius: 8px; padding: 10px; position: absolute; top: 100%; margin-top: 5px; opacity: 0; transition: opacity 0.2s; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); font-weight: normal; white-space: normal; line-height: 1.4; z-index: 100; pointer-events: none; border: 1px solid #4B5563; }
     .cal-ribbon:hover .cal-tooltip { visibility: visible; opacity: 1; }
     
-    /* 🌟 [ท่าไม้ตายใหม่] จัดตำแหน่งกล่องตามวันในสัปดาห์ (ป้องกันล้นขอบ 100%) */
-    /* คอลัมน์ 1-3 (อาทิตย์ จันทร์ อังคาร) บังคับให้กล่องชิดซ้าย */
     .cal-day:nth-child(7n+1) .cal-tooltip,
     .cal-day:nth-child(7n+2) .cal-tooltip,
     .cal-day:nth-child(7n+3) .cal-tooltip { left: 0 !important; transform: none !important; }
     
-    /* คอลัมน์ 4 (พุธ) ให้อยู่ตรงกลาง */
     .cal-day:nth-child(7n+4) .cal-tooltip { left: 50% !important; transform: translateX(-50%) !important; }
     
-    /* คอลัมน์ 5-7 (พฤหัส ศุกร์ เสาร์) บังคับให้กล่องชิดขวา */
     .cal-day:nth-child(7n+5) .cal-tooltip,
     .cal-day:nth-child(7n+6) .cal-tooltip,
     .cal-day:nth-child(7n+7) .cal-tooltip { right: 0 !important; left: auto !important; transform: none !important; }
 
-    /* ปรับขนาดให้พอดีจอในมือถือ */
     @media (max-width: 820px) {
         .cal-tooltip {
-            width: 85vw !important; /* กว้าง 85% ของจอ */
+            width: 85vw !important;
             max-width: 280px !important;
         }
     }
@@ -851,7 +848,6 @@ def render_customers(conn, df_cus):
     st.markdown("<p style='color:#6B7280; font-size:1.1rem; margin-top:0;'>บริหารจัดการข้อมูลลูกค้าสำหรับการทำรายการ</p>", unsafe_allow_html=True)
     st.write("")
     with st.expander("เพิ่ม / แก้ไข ข้อมูลลูกค้า", expanded=True):
-        # 🌟 เปลี่ยน Tabs เป็น Radio เพื่อให้จำหน้าได้
         cus_mode = st.radio("โหมดจัดการลูกค้า:", ["✨ เพิ่มรายการใหม่", "✏️ แก้ไขข้อมูลเดิม"], horizontal=True, key="cus_manage_mode", label_visibility="collapsed")
         st.markdown("<hr style='margin-top: 5px; margin-bottom: 15px;'>", unsafe_allow_html=True)
         
@@ -866,7 +862,6 @@ def render_customers(conn, df_cus):
             if st.button("บันทึกข้อมูลลูกค้า", type="primary", use_container_width=True):
                 if nc_name:
                     db.update_customer_db(conn, nc_name, nc_phone, nc_addr, "")
-                    # 🌟 ล้างค่าหลังบันทึกสำเร็จ
                     for k in ['c_name', 'c_phone', 'c_addr']:
                         if k in st.session_state: del st.session_state[k]
                     st.toast("บันทึกข้อมูลสำเร็จ! ✅")
@@ -975,7 +970,6 @@ def render_accounting(conn, df_trans, df_prod):
             if st.button("บันทึกข้อมูล", type="primary", use_container_width=True):
                 if e_title and e_amount > 0:
                     db.save_rental_transaction(conn, ['-'], 'รายจ่ายทั่วไป', '', '', '', '', e_amount, e_title, 'รายจ่าย')
-                    # 🌟 ล้างค่าหลังบันทึกสำเร็จ
                     for k in ['exp_title', 'exp_amount']:
                         if k in st.session_state: del st.session_state[k]
                     st.toast("บันทึกรายการสำเร็จ! 💸")
