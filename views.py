@@ -630,12 +630,28 @@ def render_orders(conn, df_prod, df_trans):
                                         x.get('price_15d', 0)
                                     ), axis=1)
                                     
-                                    # 🌟 [แก้บัคที่นี่] ล้างพลังมืด NaN ก่อนส่งให้ใบเสร็จ
+                                    # 🌟 [แก้บัคที่นี่] ล้างคำสาป NaN ถ้าไม่มีราคาเหมา ให้ระบบคำนวณราคาบวกกันตามปกติ!
                                     eb_raw = order['edited_base_total']
-                                    eb_val = None if pd.isna(eb_raw) else float(eb_raw)
+                                    if pd.isna(eb_raw) or str(eb_raw).lower() == 'nan' or eb_raw is None:
+                                        eb_val = float(sel_items['price'].sum())
+                                    else:
+                                        eb_val = float(eb_raw)
+                                        
                                     tp_val = 0.0 if pd.isna(order['total_price']) else float(order['total_price'])
                                         
-                                    html_content, img_bytes = utils.create_receipt_assets(order['display_date'], order['cus_name'], str(order['cus_phone']).strip(), '-', order['start_date'], order['end_date'], tp_val, order['note'], order['status'], sel_items, eb_val)
+                                    html_content, img_bytes = utils.create_receipt_assets(
+                                        order['display_date'], 
+                                        order['cus_name'], 
+                                        str(order['cus_phone']).strip(), 
+                                        '-', 
+                                        order['start_date'], 
+                                        order['end_date'], 
+                                        tp_val, 
+                                        order['note'], 
+                                        order['status'], 
+                                        sel_items, 
+                                        eb_val
+                                    )
                                     st.session_state['show_receipt_data'] = {'html': html_content, 'img': img_bytes, 'filename': f"Receipt_{order['date'].replace(':', '')}.png"}
                                     st.rerun()
 
